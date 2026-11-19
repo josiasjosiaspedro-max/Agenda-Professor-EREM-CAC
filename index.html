@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Agenda Docente • v6.1</title>
+<title>Agenda Docente • V7.1</title>
 <style>
 :root {
   --navy:#20385b;
@@ -85,6 +85,7 @@ hr.sep { border:none; border-top:1px solid var(--line); margin:14px 0; }
 </style>
 
 <link rel="stylesheet" href="./v6.css" />
+<link rel="stylesheet" href="./v7.css" />
 <link rel="manifest" href="./manifest.webmanifest" />
 <link rel="apple-touch-icon" href="./icon-180.png" />
 <meta name="theme-color" content="#20385b" />
@@ -105,6 +106,9 @@ hr.sep { border:none; border-top:1px solid var(--line); margin:14px 0; }
       </div>
     </div>
   </header>
+  <button id="v7SyncStrip" class="v7-sync-strip" onclick="agendaV6OpenCloud()" title="Abrir dados na nuvem e sincronização" aria-label="Abrir conta e sincronização">
+    <span class="sync-icon" aria-hidden="true">☁</span><span id="v7SyncText">Nuvem · toque para verificar</span><span class="sync-more" aria-hidden="true">›</span>
+  </button>
 
   <section class="screen active" id="screen-home"></section>
   <section class="screen" id="screen-days"></section>
@@ -660,5 +664,8 @@ function agendaApplyCloudPayload(payload) {
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="./v6.js"></script>
 <script src="./cloud.js"></script>
+<script src="./v7-interface.js"></script>
+<script src="./v7-calendar.js"></script>
+<script src="./v7-notes.js"></script>
 </body>
 </html>

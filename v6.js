@@ -1,4 +1,4 @@
-/* Agenda Docente v6.1 — interface B, calendário semanal anual, SIEPE e notas expandidas. */
+/* Agenda Docente v6.3 — Trimestres, comparativo e alerta de pendências anteriores. */
 (() => {
   'use strict';
   const isScheduledList = (id) => id === 'planning' || id === 'activity';
@@ -14,7 +14,7 @@
   const originalReadCloud = window.agendaReadCloudPayload;
   const originalApplyCloud = window.agendaApplyCloudPayload;
   const siepeKey = 'agenda-docente-siepe-v6';
-  let siepe = { rows:[], importedAt:'', source:'', totalExpected:null, totalReported:0 };
+  let siepe = { rows:[], importedAt:'', source:'', totalExpected:null, totalReported:0, termStarts:{}, selectedYear:null, selectedTrimester:null, pendingType:'todos' };
   try { const stored=JSON.parse(localStorage.getItem(siepeKey)||'null');if(stored && typeof stored==='object' && Array.isArray(stored.rows)) siepe={...siepe,...stored}; }catch(_e){}
   const actual = new Date();
   const week = {selected:localDateISO(actual),anchor:localDateISO(monday(actual))};
@@ -98,7 +98,7 @@
   window.renderDays=function(){return isScheduledList(state.list)?renderWeek():originalRenderDays();};
   window.renderDayDetail=renderSelectedDay;
   window.openList=function(listId){
-    if(listId==='siepe'){state.list='siepe';document.getElementById('homeHeader').classList.add('hidden');return renderSiepe();}
+    if(listId==='siepe'){state.list='siepe';siepe.selectedYear=new Date().getFullYear();siepe.selectedTrimester=null;siepe.pendingType='todos';document.getElementById('homeHeader').classList.add('hidden');return renderSiepe();}
     if(isScheduledList(listId)){
       state.list=listId;state.selectedDate=week.selected;state.weekday=dateDay(week.selected);
       document.getElementById('homeHeader').classList.add('hidden');return renderWeek();
@@ -166,7 +166,7 @@
 
   // Meu SIEPE: importa planilhas/relatórios locais sem recolher login ou senha do SIEPE.
   const normalize=(v)=>String(v??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
-  const stat=(s)=>{const x=normalize(s);return /pendente|nao preenchido|nao informado|em aberto|falta registro/.test(x)?'pendente':/concluido|preenchido|realizado|registrado|ok\b/.test(x)?'concluido':'indefinido';};
+  const stat=(s)=>{const x=normalize(s);return /pendente|nao preenchido|nao informado|nao lancado|sem registro|incompleto|em aberto|falta registro/.test(x)?'pendente':/concluido|preenchido|realizado|registrado|ok\b/.test(x)?'concluido':'indefinido';};
   function persistSiepe(){localStorage.setItem(siepeKey,JSON.stringify(siepe));persist();}
   const cleanDate=(v)=>{
     if(typeof v==='number'&&v>30000&&v<90000){const d=new Date(Math.round((v-25569)*86400000));return localDateISO(new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()));}
@@ -199,13 +199,13 @@
           for(const date of dates.length?dates:[rowDate])result.push({...base,data:date,tipo:type,situacao:s});
         }
       } else if(statusIndex>=0){
-        const ss=stat(raw[statusIndex]);if(ss!=='indefinido')result.push({...base,tipo:tipoIndex>=0&&/frequencia/.test(normalize(raw[tipoIndex]))?'Frequência':'Registro de aula',situacao:ss});
+        const ss=stat(raw[statusIndex]);if(String(raw[statusIndex]||'').trim())result.push({...base,tipo:tipoIndex>=0&&/frequencia/.test(normalize(raw[tipoIndex]))?'Frequência':'Registro de aula',situacao:ss});
       }
     }
     return uniqueRows(result);
   }
   function uniqueRows(rows){
-    const m=new Map();for(const r of rows){if(!r.turma)continue;const id=[r.turma,r.disciplina,r.data,r.tipo].map(normalize).join('|');m.set(id,r);}return [...m.values()];
+    const m=new Map();for(const r of rows){if(!r.turma)continue;const id=[r.turma,r.disciplina,r.data,r.tipo].map(normalize).join('|');if(r.situacao==='indefinido'&&m.has(id)&&m.get(id).situacao!=='indefinido')continue;m.set(id,r);}return [...m.values()];
   }
   function parseCsv(source){
     const sep=(source.split(/\r?\n/)[0]||'').split(';').length>(source.split(/\r?\n/)[0]||'').split('\t').length?';':source.includes('\t')?'\t':',';
@@ -243,38 +243,199 @@
       const found=parseGrid(matrix);
       if(!found.length)throw Error('O arquivo foi lido, mas nenhuma frequência ou registro com situação identificável foi encontrado. Isso pode acontecer com outro formato de relatório ou PDF digitalizado. Nenhuma informação foi substituída.');
       const pending=found.filter(r=>r.situacao==='pendente').length,done=found.filter(r=>r.situacao==='concluido').length,uncertain=found.length-pending-done;
-      if(!confirm(`Relatório: ${file.name}\n\n${pending} pendência(s), ${done} concluído(s), ${uncertain} registro(s) sem status claro.\n\nSubstituir os dados da última importação por esses registros?`))return;
-      siepe={...siepe,rows:found,importedAt:new Date().toISOString(),source:file.name,totalExpected:null,totalReported:found.length};persistSiepe();renderSiepe();
+      if(!confirm(`Relatório: ${file.name}\n\n${pending} pendência(s), ${done} concluído(s), ${uncertain} registro(s) sem status claro.\n\nImportar esses registros? A situação mais recente substitui a anterior para a mesma turma, disciplina, data e tipo de registro. Os outros trimestres serão preservados.`))return;
+      const yearCount={}; for(const row of found){const yr=/^\d{4}-/.test(row.data||'')?row.data.slice(0,4):'';if(yr)yearCount[yr]=(yearCount[yr]||0)+1;}
+      const focusYear=Number(Object.keys(yearCount).sort((a,b)=>yearCount[b]-yearCount[a])[0]||new Date().getFullYear());
+      const merged=uniqueRows([...(siepe.rows||[]),...found]);
+      siepe={...siepe,rows:merged,importedAt:new Date().toISOString(),source:file.name,totalExpected:null,totalReported:merged.length,selectedYear:focusYear,selectedTrimester:null,pendingType:'todos'};persistSiepe();renderSiepe();
     }catch(err){if(textEl)textEl.textContent=err.message||String(err);alert('Importação não concluída: '+(err.message||err));}
     finally{event.target.value='';}
   }
-  function progress(){
-    const pending=siepe.rows.filter(r=>r.situacao==='pendente').length, done=siepe.rows.filter(r=>r.situacao==='concluido').length;
-    const totalInput=Number(siepe.totalExpected);const total=(Number.isFinite(totalInput)&&totalInput>=(pending+done)&&totalInput>0)?totalInput:pending+done;
-    const enough=total>0 && ((done>0&&pending>0)||(done>0&&pending===0)||(Number.isFinite(totalInput)&&totalInput>0&&totalInput>=pending+done));
-    const countedDone=Number.isFinite(totalInput)&&totalInput>0&&totalInput>=pending+done ? total-pending : done;
-    return {pending,done,total,complete:enough?Math.round(100*countedDone/total):null};
+  // Datas padrão são provisórias até o usuário configurar a divisão do calendário letivo.
+  // A classificação por trimestre considera a DATA do registro, nunca apenas a data de importação.
+  function startsFor(year){
+    const data=siepe.termStarts?.[String(year)];
+    const d2=data?.second||`${year}-05-01`,d3=data?.third||`${year}-09-01`;
+    return {second:d2,third:d3,configured:!!data};
+  }
+  function termForDate(date,year){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')||Number(date.slice(0,4))!==Number(year))return null;
+    const starts=startsFor(year);
+    return date < starts.second ? 1 : date < starts.third ? 2 : 3;
+  }
+  function rowStats(rows){
+    const done=rows.filter(r=>r.situacao==='concluido').length;
+    const pending=rows.filter(r=>r.situacao==='pendente').length;
+    const unknown=rows.length-done-pending;
+    // Relatório só com pendências não permite calcular preenchimento geral.
+    // Percentuais são do conjunto de registros identificados, não de todo o SIEPE.
+    const pct=done>0?Math.round(done/(done+pending)*100):null;
+    return {rows,done,pending,unknown,pct};
+  }
+  function termStats(year,term){
+    return rowStats(siepe.rows.filter(r=>termForDate(r.data,year)===term));
+  }
+  function statusText(stats){
+    if(!stats.rows.length)return 'Sem dados';
+    if(stats.pct===null)return stats.pending?'Somente pendências':'Dados insuficientes';
+    return stats.pending?`${stats.pending} pendência(s)`:'Nenhuma pendência no relatório';
+  }
+  function comparisonPercent(stats){
+    return stats.pct===null?'—':`${stats.pct}%`;
+  }
+  function comparisonRows(year,currentTerm){
+    const terms=[1,2,3];
+    return `<div class="siepe-comparison-scroll"><table class="siepe-comparison" aria-label="Comparação dos registros importados por trimestre">
+      <thead><tr><th>Trimestre</th><th>Geral</th><th>Frequência</th><th>Aulas</th><th>Pendentes</th></tr></thead>
+      <tbody>${terms.map(term=>{
+        const a=termStats(year,term);
+        const f=rowStats(a.rows.filter(r=>r.tipo==='Frequência'));
+        const l=rowStats(a.rows.filter(r=>r.tipo==='Registro de aula'));
+        return `<tr class="${term===currentTerm&&year===new Date().getFullYear()?'siepe-comparison-current':''}">
+          <th scope="row"><button class="siepe-comparison-link" onclick="agendaV62Term(${term})">${term}º ${term===currentTerm&&year===new Date().getFullYear()?'<span class="siepe-compare-actual">Atual</span>':''}</button></th>
+          <td>${comparisonPercent(a)}</td><td>${comparisonPercent(f)}</td><td>${comparisonPercent(l)}</td><td class="${a.pending?'siepe-compare-pending':''}">${a.rows.length?a.pending:'—'}</td></tr>`;
+      }).join('')}</tbody>
+    </table></div><p class="small-note" style="margin-top:9px">“—” indica ausência de base suficiente para um percentual. Toque no trimestre para consultar os detalhes. Comparação limitada aos relatórios importados.</p>`;
+  }
+  function pastAlerts(year,currentTerm){
+    if(year!==new Date().getFullYear()||currentTerm<2)return '';
+    const older=Array.from({length:currentTerm-1},(_,i)=>({term:i+1,stats:termStats(year,i+1)}));
+    const withPending=older.filter(item=>item.stats.pending>0);
+    if(withPending.length){
+      const total=withPending.reduce((n,item)=>n+item.stats.pending,0);
+      return `<div class="card siepe-old-alert" role="status">
+        <div class="row" style="align-items:flex-start"><span class="siepe-alert-emoji">⚠️</span><div style="flex:1">
+          <div class="title">${total} pendência(s) de trimestres anteriores</div>
+          <p class="small-note">Há registros de períodos anteriores ainda marcados como pendentes nos relatórios importados.</p>
+          <div class="siepe-alert-actions">${withPending.map(item=>`<button onclick="agendaV62Term(${item.term})">Ver ${item.term}º trimestre (${item.stats.pending})</button>`).join('')}</div>
+        </div></div></div>`;
+    }
+    if(older.some(item=>!item.stats.rows.length))return `<div class="siepe-past-info">ℹ️ Ainda não há relatórios importados de todos os trimestres anteriores. Não é possível afirmar que não existem pendências.</div>`;
+    return `<div class="siepe-past-info">✓ Nenhuma pendência de trimestre anterior foi identificada nos relatórios importados.</div>`;
+  }
+  function siteFocusYear(){
+    const years=[...new Set(siepe.rows.map(r=>Number((r.data||'').slice(0,4))).filter(y=>y>2000&&y<2200))];
+    const selected=Number(siepe.selectedYear);
+    if(selected>2000&&selected<2200)return selected;
+    const todayYear=new Date().getFullYear();
+    return years.includes(todayYear)?todayYear:(years.sort((a,b)=>b-a)[0]||todayYear);
+  }
+  function defaultTerm(year){
+    if(year===new Date().getFullYear())return termForDate(localDateISO(new Date()),year)||3;
+    for(let t=3;t>=1;t--)if(termStats(year,t).rows.length)return t;
+    return 3;
+  }
+  const pctLabel=(v)=>v===null?'Sem dados suficientes':`${v}%`;
+  function termCard(year,term,active,focus){
+    const stats=termStats(year,term),selected=Number(active)===term;
+    const current=year===new Date().getFullYear()&&term===focus;
+    const title=`${term}º trimestre`;
+    const text=statusText(stats);
+    const bar=stats.pct===null?'<div class="siepe-term-empty"></div>':`<div class="siepe-term-track"><span class="siepe-term-done" style="width:${stats.pct}%"></span><span class="siepe-term-todo" style="flex:1"></span></div>`;
+    return `<button class="siepe-term-card ${selected?'selected':''} ${current?'current':''}" onclick="agendaV62Term(${term})" aria-pressed="${selected}">
+      <span class="siepe-term-title">${title}</span>${current?'<span class="siepe-current-label">ATUAL</span>':''}
+      <strong>${stats.pct===null?'—':stats.pct+'%'}</strong>
+      ${bar}<small>${text}</small></button>`;
+  }
+  function miniStat(title,items){
+    const a=rowStats(items);
+    return `<div class="siepe-kpi"><div class="row" style="justify-content:space-between"><strong>${title}</strong><strong>${comparisonPercent(a)}</strong></div>
+      <div class="siepe-mini-track ${a.pct===null?'siepe-empty-track':''}" role="img" aria-label="${statusText(a)}"><span style="width:${a.pct??0}%"></span></div>
+      <small>${a.done} concluído(s) · ${a.pending} pendente(s)${a.unknown?' · '+a.unknown+' sem status':''}</small>
+      ${a.pct===null?`<small>${statusText(a)}</small>`:''}</div>`;
+  }
+  function byClassroom(rows){
+    const result=new Map();
+    for(const row of rows){
+      const key=(row.turma||'Turma não identificada')+(row.disciplina?' • '+row.disciplina:'');
+      if(!result.has(key))result.set(key,[]);
+      result.get(key).push(row);
+    }
+    return [...result.entries()].sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'));
+  }
+  function detailedClassrooms(rows){
+    if(!rows.length)return '<div class="small-note">Nenhum registro do trimestre disponível para análise por turma.</div>';
+    return byClassroom(rows).map(([name,records])=>{
+      const a=rowStats(records);
+      return `<div class="siepe-class-row"><div class="row" style="justify-content:space-between"><strong>${escape(name)}</strong><span class="siepe-class-percent">${comparisonPercent(a)}</span></div>
+      <div class="siepe-mini-track ${a.pct===null?'siepe-empty-track':''}"><span style="width:${a.pct??0}%"></span></div><small>${a.done} concluído(s), ${a.pending} pendente(s)${a.unknown?', '+a.unknown+' sem status':''} — registros importados</small>${a.pct===null?`<small>${statusText(a)}</small>`:''}</div>`;
+    }).join('');
+  }
+  function renderPending(items){
+    if(!items.length)return '<p class="small-note">Nenhuma pendência identificada neste trimestre nos registros importados. Isso não comprova que o trimestre esteja integralmente preenchido no SIEPE.</p>';
+    const groups=byClassroom(items);
+    return groups.map(([label,records])=>{
+      const sorted=records.slice().sort((a,b)=>(a.data||'').localeCompare(b.data||'')||a.tipo.localeCompare(b.tipo));
+      return `<div class="siepe-pending-group"><div class="siepe-group-head"><strong>${escape(label)}</strong><span>${records.length} pendência(s)</span></div>${sorted.map(r=>`<div class="siepe-item"><small><strong>${escape(r.tipo)}</strong>${escape(formatDate(r.data))} • Pendente</small></div>`).join('')}</div>`;
+    }).join('');
   }
   function renderSiepe(){
     showScreen('screen-siepe');
-    const p=progress();const latest=siepe.importedAt?new Date(siepe.importedAt).toLocaleString('pt-BR'):'Nenhum relatório importado';
-    const bar=p.complete===null?'':`<div class="siepe-progress" aria-label="${p.complete}% concluído, ${100-p.complete}% pendente"><span style="width:${p.complete}%"></span><span style="flex:1"></span></div><div class="row" style="justify-content:space-between"><strong style="color:#177749">${p.complete}% preenchido</strong><strong style="color:#c04747">${100-p.complete}% pendente</strong></div>`;
-    const items=siepe.rows.filter(r=>r.situacao==='pendente');
+    const year=siteFocusYear();
+    const currentTerm=defaultTerm(year);
+    const active=Number(siepe.selectedTrimester)||currentTerm;
+    const t=termStats(year,active);
+    const latest=siepe.importedAt?new Date(siepe.importedAt).toLocaleString('pt-BR'):'Nenhum relatório importado';
+    const allowedYears=[...new Set([year,new Date().getFullYear(),...siepe.rows.map(r=>Number((r.data||'').slice(0,4))).filter(y=>y>2000&&y<2200)])].sort((a,b)=>b-a);
+    const yearOptions=allowedYears.map(y=>`<option value="${y}" ${y===year?'selected':''}>${y}</option>`).join('');
+    const dateValid=siepe.rows.filter(r=>/^\d{4}-\d{2}-\d{2}$/.test(r.data||''));
+    const noDate=siepe.rows.length-dateValid.length;
+    const otherYears=dateValid.filter(r=>Number(r.data.slice(0,4))!==year).length;
+    const pending=t.rows.filter(r=>r.situacao==='pendente');
+    const filter=siepe.pendingType||'todos';
+    const filtered=filter==='todos'?pending:pending.filter(r=>r.tipo===filter);
+    const aDates=t.rows.map(r=>r.data).sort();
+    const periodHint=t.rows.length?`Dados de ${escape(formatDate(aDates[0]))} a ${escape(formatDate(aDates[aDates.length-1]))} (${t.rows.length} registros importados)`:'Não há registros deste trimestre no relatório atual';
+    const starts=startsFor(year);
+    const freq=t.rows.filter(r=>r.tipo==='Frequência'), lessons=t.rows.filter(r=>r.tipo==='Registro de aula');
+    const bar=t.pct!==null?`<div class="siepe-progress" role="img" aria-label="${t.pct}% concluído nos registros importados"><span style="width:${t.pct}%"></span><span style="flex:1"></span></div>
+      <div class="row" style="justify-content:space-between"><strong style="color:#177749">${t.pct}% concluído</strong><strong style="color:#c04747">${100-t.pct}% pendente</strong></div>` : '<div class="siepe-hint">Sem dados suficientes para calcular o percentual deste trimestre.</div>';
     document.getElementById('screen-siepe').innerHTML=`
       <div class="topbar"><button onclick="renderHome()">← Início</button><div class="section-title" style="margin:0">Meu SIEPE</div></div>
-      <div class="card"><div class="row" style="justify-content:space-between"><div><div class="title">Acompanhamento dos registros</div><div class="subtitle">Última importação: ${escape(latest)}</div></div><span style="font-size:25px">📊</span></div>
-        ${bar ? bar + '<p class="small-note">Percentual referente apenas aos registros identificados neste relatório. Se o arquivo não incluir todo o período, o resultado não representa o preenchimento completo do SIEPE.</p>' : `<div class="siepe-hint" style="margin-top:12px">Percentual ainda indisponível: o relatório precisa informar os registros concluídos e pendentes, ou você pode preencher o total de registros esperados abaixo. Não exibimos um percentual inventado.</div>`}
-        <div class="actions"><span class="siepe-tag">${p.pending} pendência(s)</span><span class="siepe-tag" style="background:#e9eff9;color:#245b95">${siepe.rows.length} item(ns) importado(s)</span></div>
-        <label>Total de registros esperados no período (opcional)</label><input type="number" min="1" step="1" style="width:100%;border-radius:12px;border:1px solid var(--line);padding:11px" value="${siepe.totalExpected||''}" placeholder="Ex.: 120" onchange="agendaV6SiepeTotal(this.value)" /><div class="small-note">Preencha somente se souber o total correto. Esse número permite calcular a proporção de registros ainda pendentes.</div>
+      <div class="card siepe-priority"><div class="row" style="justify-content:space-between;align-items:flex-start"><div>
+        <div class="title">Situação por trimestre</div><div class="subtitle">Última importação: ${escape(latest)}</div></div>
+        <label class="siepe-year-label">Ano <select onchange="agendaV62Year(this.value)">${yearOptions}</select></label></div>
+        <div class="siepe-term-grid">${[1,2,3].map(term=>termCard(year,term,active,currentTerm)).join('')}</div>
+        <p class="small-note" style="margin-top:10px">O trimestre atual fica destacado automaticamente. <strong>Verde</strong>: registros concluídos; <strong>vermelho</strong>: pendentes; <strong>cinza</strong>: sem dados suficientes. Os percentuais referem-se apenas aos relatórios importados.</p></div>
+      ${pastAlerts(year,currentTerm)}
+      <div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start"><div>
+        <div class="title">${active}º trimestre ${active===currentTerm&&year===new Date().getFullYear()?'<span class="siepe-active-label">PRIORIDADE</span>':''}</div>
+        <div class="subtitle">${periodHint}</div></div><span style="font-size:23px">📊</span></div>
+        ${bar}<div class="siepe-summary-numbers"><span><b>${t.done}</b> concluídos</span><span><b>${t.pending}</b> pendentes</span><span><b>${t.rows.length}</b> registros</span></div>
+        ${t.unknown?`<div class="small-note">${t.unknown} registro(s) com status não identificado, excluídos do cálculo percentual.</div>`:''}
+        ${t.rows.length?`<hr class="sep" /><div class="siepe-kpi-grid">${miniStat('Frequência',freq)}${miniStat('Registro de aula',lessons)}</div>`:''}
       </div>
-      <div class="card"><div class="title">Atualizar relatórios</div><p class="small-note">Baixe o relatório no site oficial do SIEPE e importe aqui. O arquivo é analisado no seu navegador; somente os registros identificados ficam salvos no Agenda Docente.</p>
-        <label>Relatório do SIEPE (XLSX, XLS, CSV, HTML ou PDF)</label><input type="file" accept=".xlsx,.xls,.xlsm,.ods,.csv,.tsv,.txt,.html,.htm,.pdf" onchange="agendaV6ImportSiepe(event)" /><div class="small-note" id="siepeImportStatus"></div>
-        <div class="actions"><button class="outline-btn" onclick="window.open('https://www.siepe.educacao.pe.gov.br/ator/educadores','_blank','noopener')">Abrir SIEPE oficial ↗</button><button class="primary-btn" onclick="agendaV6Pending(true)">Pendências (${p.pending})</button></div>
-      </div>
-      <div class="card"><div class="title">Pendências identificadas</div><div class="subtitle">Frequência e registro de aulas por turma e data</div><div id="siepeList">${renderPending(items)}</div></div>
-      `;
+      <div class="card"><div class="title">Comparativo dos três trimestres</div><div class="subtitle">Geral, frequência, registro de aulas e pendências</div>${comparisonRows(year,currentTerm)}</div>
+      <div class="card"><div class="title">Situação por turma</div><div class="subtitle">${active}º trimestre · percentual dos registros importados</div>${detailedClassrooms(t.rows)}</div>
+      <div class="card"><div class="row" style="justify-content:space-between"><div><div class="title">Pendências do ${active}º trimestre</div><div class="subtitle">Por turma, data e tipo de registro</div></div><span class="siepe-tag">${t.pending} pendência(s)</span></div>
+        <div class="siepe-filters"><button class="${filter==='todos'?'active':''}" onclick="agendaV62PendingType('todos')">Todas</button>
+          <button class="${filter==='Frequência'?'active':''}" onclick="agendaV62PendingType('Frequência')">Frequência</button>
+          <button class="${filter==='Registro de aula'?'active':''}" onclick="agendaV62PendingType('Registro de aula')">Registro de aula</button></div>
+        <div id="siepeList">${renderPending(filtered)}</div></div>
+      <div class="card"><div class="title">Atualizar relatório</div>
+        <p class="small-note">Importe um relatório exportado do SIEPE. Registros anteriores de outros trimestres são mantidos; dados da mesma turma, data e tipo são atualizados. Para percentuais confiáveis, inclua turmas concluídas e pendentes.</p>
+        <label>Relatório (XLSX, XLS, CSV, HTML ou PDF)</label><input type="file" accept=".xlsx,.xls,.xlsm,.ods,.csv,.tsv,.txt,.html,.htm,.pdf" onchange="agendaV6ImportSiepe(event)" />
+        <div class="small-note" id="siepeImportStatus"></div><div class="actions">
+          <button class="outline-btn" onclick="window.open('https://www.siepe.educacao.pe.gov.br/','_blank','noopener')">Abrir SIEPE oficial ↗</button>
+          <button class="primary-btn" onclick="agendaV6Pending()">Pendências (${t.pending})</button></div>
+        <div class="small-note">${noDate?`⚠ ${noDate} registro(s) sem data ficaram fora do cálculo trimestral. `:''}${otherYears?`${otherYears} registro(s) pertencem a outro ano e não estão nesta visão. `:''}</div></div>
+      <details class="legacy-fold"><summary>Configurar datas dos trimestres de ${year}</summary>
+        <p class="small-note">As datas sugeridas são <strong>provisórias</strong>. Ajuste os inícios de cada trimestre de acordo com o calendário letivo oficial da escola. O 1º começa no início do ano; os outros períodos começam nas datas abaixo.</p>
+        <label>Início do 2º trimestre</label><input type="date" value="${starts.second}" onchange="agendaV62SetTerm(2,this.value)" style="width:100%;padding:10px;border:1px solid #dce5f0;border-radius:10px" />
+        <label>Início do 3º trimestre</label><input type="date" value="${starts.third}" onchange="agendaV62SetTerm(3,this.value)" style="width:100%;padding:10px;border:1px solid #dce5f0;border-radius:10px" />
+        <div class="small-note">${starts.configured?'Datas configuradas para este ano.':'Datas ainda não confirmadas pelo calendário letivo.'}</div>
+      </details>`;
   }
-  function renderPending(items){return items.length?items.slice(0,200).map((r,i)=>`<div class="siepe-item"><strong>${escape(r.turma)}${r.disciplina?' • '+escape(r.disciplina):''}</strong><small>${escape(r.tipo)} • ${escape(formatDate(r.data))} • Pendente</small></div>`).join(''):'<p class="small-note">Nenhuma pendência identificada nos registros carregados. Isso não comprova que o SIEPE esteja integralmente preenchido.</p>';}
+  window.agendaV62Term=(t)=>{if(![1,2,3].includes(Number(t)))return;siepe.selectedTrimester=Number(t);siepe.pendingType='todos';persistSiepe();renderSiepe();};
+  window.agendaV62Year=(y)=>{y=Number(y);if(y<2000||y>2200)return;siepe.selectedYear=y;siepe.selectedTrimester=null;siepe.pendingType='todos';persistSiepe();renderSiepe();};
+  window.agendaV62PendingType=(type)=>{siepe.pendingType=type;persistSiepe();renderSiepe();document.getElementById('siepeList')?.scrollIntoView({behavior:'smooth',block:'start'});};
+  window.agendaV62SetTerm=(term,date)=>{
+    const year=siteFocusYear(), starts=startsFor(year);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date||'')||Number(date.slice(0,4))!==year){alert('Informe uma data válida dentro do ano selecionado.');renderSiepe();return;}
+    const next={second:term===2?date:starts.second,third:term===3?date:starts.third};
+    if(next.second>=next.third){alert('O 2º trimestre deve começar antes do 3º.');renderSiepe();return;}
+    siepe.termStarts={...(siepe.termStarts||{}),[String(year)]:next};siepe.selectedTrimester=null;persistSiepe();renderSiepe();
+  };
   window.agendaV6Pending=()=>{document.getElementById('siepeList')?.scrollIntoView({behavior:'smooth',block:'start'});};
   window.agendaV6ImportSiepe=importReport;
   window.agendaV6SiepeTotal=(value)=>{const n=Number(value);siepe.totalExpected=value&&Number.isInteger(n)&&n>0?n:null;persistSiepe();renderSiepe();};
@@ -297,7 +458,7 @@
   window.agendaReadCloudPayload=function(){
     const payload=originalReadCloud();
     // Compatibilidade com a v5: sem dados SIEPE, não altera o formato original da nuvem.
-    if(siepe.rows.length||siepe.importedAt||siepe.totalExpected) payload.siepe=JSON.parse(JSON.stringify(siepe));
+    if(siepe.rows.length||siepe.importedAt||siepe.totalExpected||Object.keys(siepe.termStarts||{}).length) payload.siepe=JSON.parse(JSON.stringify(siepe));
     return payload;
   };
   window.agendaApplyCloudPayload=function(payload){

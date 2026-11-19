@@ -1,0 +1,75 @@
+
+/* Agenda Docente V7 - prévia visual da Interface B, a partir da versão funcional 6.3 */
+:root{--navy:#142d56;--bg:#f5f7fb;--muted:#758096;--line:#e4e9f3;}
+html{background:#f1f4f9}
+body{background:#f1f4f9}
+.phone{background:#f5f7fb;max-width:440px;min-height:100svh;border-radius:0;box-shadow:0 10px 42px rgba(15,38,76,.09);}
+header.hero{padding:29px 21px 24px!important;border-radius:0 0 22px 22px!important;background:linear-gradient(115deg,#152e57,#233e6d)!important}
+header.hero::after{display:none!important}
+.hero-top{padding-top:0!important;gap:13px!important}
+.hero-top img{width:66px!important;height:66px!important;flex-shrink:0!important;background:#fff;padding:2px;border-radius:50%!important}
+.hero h1{font-size:27px!important;letter-spacing:-.55px!important;line-height:1.15!important}
+.hero-top>div>div{font-size:12px!important;line-height:1.35!important;opacity:.88}
+#cloudHeaderButton{display:none!important}
+.v7-sync-strip{width:calc(100% - 34px);margin:15px auto 2px;padding:9px 12px;display:flex;align-items:center;gap:8px;background:#e9eef6;color:#536582;border:1px solid #e2e8f2;border-radius:20px;min-height:35px;cursor:pointer;font-family:inherit;font-size:12px;text-align:left;}
+.v7-sync-strip .sync-icon{font-size:16px;color:#7892b4;line-height:1;}
+.v7-sync-strip .sync-more{margin-left:auto;font-size:15px;color:#95a3b8;}
+#homeHeader.hidden + .v7-sync-strip{display:none!important}
+#screen-home.screen{padding:15px 17px 34px!important}
+#screen-home>.siepe-hint{border-radius:12px!important;padding:10px 13px!important;margin:0 0 16px!important;font-size:11px!important;background:#fff8e9!important;color:#816321!important;border:1px solid #f5e9cc}
+#screen-home .card{border-radius:20px!important;border:1px solid #eff2f7!important;background:#fff!important;box-shadow:0 4px 13px rgba(29,55,93,.055)!important;padding:16px 15px!important;margin-bottom:12px!important}
+#screen-home .row{gap:13px!important;min-height:49px!important}
+#screen-home .icon-box{width:50px!important;height:50px!important;border-radius:15px!important;font-size:22px!important}
+#screen-home .title{font-size:17px!important;color:#132e56!important;font-weight:750!important;}
+#screen-home .subtitle{font-size:12px!important;line-height:1.35!important;color:#788296!important;}
+#screen-home .card[onclick*="siepe"] .icon-box{background:#2872ac!important}
+#screen-home .legacy-fold{background:#f9fbff!important;box-shadow:none!important;border:1px solid #dfe6f0!important;}
+@media(min-width:560px){.phone{margin:22px auto;border:1px solid #e5e9f1;border-radius:27px;overflow:hidden;min-height:850px}.v7-sync-strip{width:calc(100% - 38px)}}
+@media(max-width:350px){.hero h1{font-size:24px!important}.hero-top img{width:59px!important;height:59px!important}#screen-home .title{font-size:15px!important}}
+
+/* Datas e eventos escolares fixos — cópia visual do calendário 2026 fornecido */
+.cal-day.official-day{position:relative;min-height:54px;box-shadow:inset 0 -3px var(--official-color,#2266aa);background:#f7f9fc}
+.cal-day.official-day.selected{background:var(--navy);color:#fff;box-shadow:inset 0 -3px var(--official-color,#d0e2fa)}
+.cal-day .school-markers{display:flex;gap:3px;align-items:center;justify-content:center;line-height:0;margin-top:2px}
+.cal-day .school-markers i{width:6px;height:6px;display:block;border-radius:50%;box-shadow:0 0 0 1px rgba(255,255,255,.48)}
+.school-legend{margin-top:12px;border-radius:12px;background:#f5f8ff;border:1px solid #e3eafb;padding:10px;font-size:12px;color:#455978}
+.school-legend summary{cursor:pointer;font-weight:700;color:#234572;list-style-position:inside;}
+.school-legend-items{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.school-legend-item{display:flex;gap:6px;align-items:flex-start;line-height:1.25}
+.school-legend-dot{width:10px;height:10px;flex:0 0 10px;border-radius:3px;margin-top:2px}
+.school-events-header{margin:14px 0 8px;font-weight:750;color:#233e68;font-size:14px;display:flex;align-items:center;gap:6px}
+.school-event-card{padding:10px 11px;border-radius:12px;border:1px solid #e7eaf2;border-left:4px solid var(--event-color,#2370be);background:#fcfdff;margin:7px 0;color:#293d5a;}
+.school-event-card .school-event-label{font-weight:750;font-size:13px;line-height:1.3}
+.school-event-card .school-event-category{font-size:11px;color:#708099;margin-top:3px}
+.school-preview-note{font-size:11px;color:#687b97;margin-top:10px;padding:8px 10px;background:#f5f8fd;border-radius:10px;border:1px solid #e6edf8}
+@media(max-width:380px){.school-legend-items{grid-template-columns:1fr}.cal-day .school-markers i{width:5px;height:5px}}
+
+/* Agenda Docente V7.1 — ferramentas contextuais de tabela */
+.v7-notes-table-controls{width:100%;margin:8px 0 14px;color:#233f63;}
+.v7-import-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:#f6f9fd;border:1px solid #e4ebf6;border-radius:13px;padding:9px 10px;}
+.v7-import-row button{min-height:38px;font-size:12px;border-radius:10px;padding:9px 11px;touch-action:manipulation;}
+.v7-import-row .primary-btn{background:#1862a3;color:white;border:1px solid #1862a3;}
+.v7-import-row .v7-undo-btn{background:white;color:#144777;border:1px solid #bcd0e9;}
+.v7-import-row .v7-import-caption{color:#718095;font-size:11px;line-height:1.2;}
+.v7-selection-panel{margin:10px 0 0;padding:12px;background:#f8fbff;border:1px solid #cdddf1;border-radius:14px;box-shadow:0 5px 15px rgba(16,50,96,.055)}
+.v7-selection-head{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:14px;color:#1d436f;margin-bottom:5px;}
+.v7-mini-close{font-size:14px;background:transparent;border:0;color:#64748b;padding:6px 9px;min-width:32px;min-height:32px;}
+.v7-editor-help{font-size:12px;line-height:1.4;color:#667a91;margin:2px 0 9px;}
+.v7-select-actions,.v7-table-toolbar{display:flex;gap:7px;flex-wrap:wrap;}
+.v7-select-actions{margin-bottom:9px;}
+.v7-select-actions button,.v7-table-toolbar button{font-family:inherit;font-size:12px;line-height:1.3;border:1px solid #cfdff2;border-radius:10px;background:#fff;color:#1d507d;padding:9px 10px;min-height:40px;touch-action:manipulation;}
+.v7-select-actions button.active{border-color:#266db2;background:#e4f0fd;color:#0c477d;font-weight:750;box-shadow:inset 0 0 0 1px #266db2;}
+.v7-table-toolbar{border-top:1px solid #e3ebf6;padding-top:10px;}
+.v7-table-toolbar button.danger{color:#aa3c4b;border-color:#f0cfd5;}
+.v7-notes-feedback{font-size:11px;color:#6c7c92;padding:7px 4px 0;line-height:1.35;}
+.v7-notes-feedback.problem{color:#a53848;font-weight:650;}
+#notesEditor{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+#notesEditor table{border-collapse:collapse;max-width:100%;margin:12px 0;}
+#notesEditor td,#notesEditor th{min-width:52px;border:1px solid #bbc9df;padding:7px;vertical-align:top;}
+#notesEditor .v7-picked-cell{outline:2px solid #2174c5;outline-offset:-2px;background:#f0f7ff;}
+#notesEditor .v7-selected-row{background:#dcedff!important;box-shadow:inset 0 2px 0 #3084cb,inset 0 -2px 0 #3084cb;}
+#notesEditor .v7-selected-column{background:#e5f2ff!important;box-shadow:inset 2px 0 0 #3084cb,inset -2px 0 0 #3084cb;}
+@media(max-width:390px){.v7-import-row button,.v7-select-actions button,.v7-table-toolbar button{font-size:11px;padding:8px 9px;}.v7-import-caption{width:100%;}}
+
+.v7-notes-table-controls [hidden]{display:none!important;}
+.v7-selection-panel{position:sticky;top:8px;z-index:8;}

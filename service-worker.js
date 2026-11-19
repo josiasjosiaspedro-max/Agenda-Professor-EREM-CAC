@@ -1,5 +1,5 @@
-const CACHE='agenda-docente-v6-1-semanal-siepe-2';
-const ASSETS=['./','./index.html','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png','./supabase-config.js','./cloud.js','./v6.js','./v6.css'];
+const CACHE='agenda-docente-v7-1-contexto-undo-selecao-1';
+const ASSETS=['./','./index.html','./manifest.webmanifest','./icon-180.png','./icon-192.png','./icon-512.png','./supabase-config.js','./cloud.js','./v6.js','./v6.css','./v7.css','./v7-interface.js','./v7-calendar.js','./v7-notes.js'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting()));
 });

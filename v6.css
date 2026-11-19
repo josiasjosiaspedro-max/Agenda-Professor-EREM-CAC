@@ -1,4 +1,4 @@
-/* Agenda Docente — versão 6.1 • Interface B */
+/* Agenda Docente — versão 6.3 • Interface B */
 :root{--navy:#143f79;--teal:#187c72;--bg:#f6f8fc;--line:#e2e8f2;--muted:#67758c}
 body{background:#edf2f9;color:#1d2e49}
 .phone{background:var(--bg);min-height:100svh;box-shadow:0 4px 45px rgba(24,54,98,.08)}
@@ -56,3 +56,64 @@ header.hero:after{content:"";position:absolute;z-index:0;width:340px;height:180p
 #screen-siepe .actions button{font-size:12px}
 #screen-cloud .card{padding:18px}
 @media(max-width:360px){.hero h1{font-size:23px}.hero-top img{width:60px;height:60px}.week-grid{gap:3px}.week-day{min-height:77px}.week-day strong{font-size:16px}}
+
+/* Meu SIEPE — revisão trimestral v6.2 */
+.siepe-priority{border-color:#d2e2f5}
+.siepe-year-label{font-size:11px;margin:0;color:#7b8da4;display:flex;gap:6px;align-items:center}
+.siepe-year-label select{background:#f5f8fc;border:1px solid #dbe5f0;border-radius:9px;color:#244875;padding:7px 3px;font-size:12px}
+.siepe-term-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:16px}
+.siepe-term-card{position:relative;min-width:0;background:#f9fbff;border:1px solid #e1e9f4;border-radius:13px;padding:12px 6px 10px;display:flex;flex-direction:column;gap:7px;text-align:left;color:#1b426f;cursor:pointer}
+.siepe-term-card.current{border-color:#6c9dd4;background:#eef5fe}
+.siepe-term-card.selected{box-shadow:0 0 0 2px #357bc5;border-color:#357bc5;background:#f2f7ff}
+.siepe-term-title{font-weight:750;font-size:10px;white-space:nowrap}
+.siepe-term-card strong{font-size:22px;color:#163d74;line-height:1.1}
+.siepe-term-card small{font-size:10px;color:#70849c;line-height:1.25;min-height:23px}
+.siepe-current-label{background:#d7e9ff;color:#185c9d;border-radius:5px;font-size:8px;padding:2px 5px;font-weight:750;align-self:flex-start;margin-top:-2px}
+.siepe-term-track{height:7px;border-radius:20px;display:flex;overflow:hidden;background:#e5ebf3;width:100%}
+.siepe-term-done{background:#1a985a}.siepe-term-todo{background:#df5858}
+.siepe-term-empty{height:7px;border-radius:20px;background:#e4e9f1;width:100%}
+.siepe-active-label{display:inline-block;vertical-align:middle;color:#1c639b;background:#e5f1ff;border-radius:99px;padding:3px 6px;font-size:9px;letter-spacing:.2px}
+.siepe-summary-numbers{display:flex;gap:4px;justify-content:space-between;flex-wrap:wrap;font-size:11px;color:#536783;margin-top:13px}
+.siepe-summary-numbers span{background:#f3f7fc;border-radius:9px;padding:6px}
+.siepe-summary-numbers b{color:#17436f}
+.siepe-kpi-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.siepe-kpi{background:#f6f9fe;border:1px solid #e9eff9;border-radius:12px;padding:11px 9px;min-width:0}
+.siepe-kpi strong{font-size:12px;color:#1b477b}
+.siepe-kpi small,.siepe-class-row small{font-size:10px;color:#75859a;display:block;margin-top:5px}
+.siepe-mini-track{height:6px;background:#f0dede;border-radius:10px;overflow:hidden;margin-top:7px}
+.siepe-mini-track span{display:block;background:#20a16b;height:100%}
+.siepe-class-row{padding:12px 0;border-bottom:1px solid #edf0f6}
+.siepe-class-row:last-child{border-bottom:0;padding-bottom:0}
+.siepe-class-row strong{font-size:12px;color:#233d62}
+.siepe-class-percent{font-weight:800;color:#1e5b91;font-size:13px}
+.siepe-filters{display:flex;gap:5px;margin:13px 0;flex-wrap:wrap}
+.siepe-filters button{font-size:11px;border-radius:99px;padding:8px 9px;background:#f4f7fb;color:#526d90;border:1px solid #e0e8f3;cursor:pointer}
+.siepe-filters button.active{background:#205fa8;color:#fff;border-color:#205fa8}
+.siepe-pending-group{border:1px solid #edf0f6;border-radius:12px;padding:9px;margin:9px 0}
+.siepe-group-head{display:flex;justify-content:space-between;gap:5px;align-items:center;color:#21466d}
+.siepe-group-head strong{font-size:12px}
+.siepe-group-head span{font-size:10px;color:#b04d4d;white-space:nowrap}
+.siepe-pending-group .siepe-item{background:#f9fbfd;padding:8px;margin:7px 0}
+.siepe-pending-group .siepe-item strong{font-size:11px;color:#344e72;margin-bottom:3px}
+@media(max-width:360px){.siepe-term-card{padding:10px 4px 8px}.siepe-term-title{font-size:9px}.siepe-term-card strong{font-size:18px}}
+
+/* v6.3 — panorama de cada trimestre e recuperação de períodos anteriores */
+.siepe-old-alert{background:#fff9f4;border:1px solid #f0cda8!important}
+.siepe-old-alert .title{color:#9a4b17}
+.siepe-alert-emoji{font-size:22px;line-height:1.2}
+.siepe-alert-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.siepe-alert-actions button{padding:9px 11px;border:1px solid #dba878;background:#fff;color:#884613;border-radius:10px;font-weight:700;font-size:12px;cursor:pointer}
+.siepe-past-info{margin-bottom:11px;padding:11px 13px;background:#edf4fd;color:#526e91;border-radius:12px;font-size:12px;line-height:1.5}
+.siepe-comparison-scroll{max-width:100%;overflow-x:auto;margin-top:13px}
+.siepe-comparison{width:100%;min-width:295px;border-collapse:collapse;font-size:11px;text-align:center}
+.siepe-comparison th,.siepe-comparison td{padding:12px 3px;border-bottom:1px solid #e9eef6;white-space:nowrap}
+.siepe-comparison thead th{background:#f4f8fd;color:#5c7395;font-size:9px;font-weight:750}
+.siepe-comparison tbody th{text-align:left}
+.siepe-comparison tbody td{color:#214b7e;font-weight:750}
+.siepe-comparison-current{background:#eef6ff}
+.siepe-comparison-link{padding:6px 0;background:none;color:#19548e;text-decoration:underline;text-underline-offset:2px;border:0;font-size:11px;font-weight:800;cursor:pointer}
+.siepe-compare-actual{font-size:8px;display:block;background:#dbeaff;border-radius:10px;color:#2867a0;text-decoration:none;padding:2px 3px}
+.siepe-comparison .siepe-compare-pending{color:#b94747}
+.siepe-mini-track.siepe-empty-track{background:#e4e9f1}
+.siepe-term-card.current:not(.selected){box-shadow:inset 0 0 0 1px #98b9dc}
+@media(max-width:370px){.siepe-comparison{font-size:10px}.siepe-comparison th,.siepe-comparison td{padding:9px 2px}}
