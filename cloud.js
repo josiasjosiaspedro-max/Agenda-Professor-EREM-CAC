@@ -55,6 +55,8 @@
   function sameContent(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
 
   function display() {
+    const label=!state.user ? '☁ Entrar' : !state.linked ? '☁ Configurar' : state.error ? '☁ Atenção' : state.syncing || state.changed ? '☁ Enviando' : '☁ Nuvem OK';
+    window.agendaV6UpdateCloudButton?.(label,Boolean(state.user && state.linked && !state.error && !state.changed));
     const el = document.getElementById('agendaCloudPanel');
     if (!el) return;
     const details = state.error
@@ -108,13 +110,9 @@
   }
 
   function installCard() {
-    const home = document.getElementById('screen-home');
-    if (home && !document.getElementById('agendaCloudPanel')) {
-      home.insertAdjacentHTML('afterbegin', '<div class="card" id="agendaCloudPanel"></div>');
-    }
+    // A v6 deixou o painel completo em sua própria tela. No início mostra só o estado discreto.
     display();
   }
-
   const originalRenderHome = window.renderHome;
   window.renderHome = function (...args) {
     const result = originalRenderHome(...args);
@@ -390,6 +388,7 @@
 
   // Funções públicas chamadas pelos controles da versão HTML.
   Object.assign(window, {
+    agendaCloudRender: display,
     agendaCloudSignIn: signIn,
     agendaCloudSignUp: signUp,
     agendaCloudSignOut: signOut,
