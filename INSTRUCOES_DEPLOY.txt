@@ -1,0 +1,23 @@
+AGENDA DOCENTE — PUBLICAR COM GITHUB E RENDER
+
+1. Baixe e descompacte este ZIP no computador Windows.
+2. No GitHub (github.com), crie um repositório chamado agenda-docente.
+3. Em Add file > Upload files, envie os arquivos descompactados à RAIZ do repositório, e confirme em Commit changes. Não envie apenas o arquivo ZIP.
+4. No Render (dashboard.render.com), entre com GitHub e selecione New > Static Site.
+5. Escolha o repositório agenda-docente e a branch main.
+6. Se configurar manualmente: Root Directory em branco; Build Command: echo "Arquivos prontos"; Publish Directory: . (ponto); escolha o plano disponível; Create Static Site.
+   Alternativamente, use a opção Blueprint com o render.yaml deste pacote.
+7. Aguarde o status Live e copie seu endereço HTTPS no formato https://nome.onrender.com.
+8. No iPhone: abra esse endereço pelo Safari, toque Compartilhar > Adicionar à Tela de Início, marque Abrir como App se for exibido, e toque Adicionar.
+
+SUPABASE
+- O projeto atual NÃO está integrado ao Supabase. A criação de um projeto no site supabase.com, por si só, não sincroniza informações.
+- Para sincronizar entre dispositivos, é necessário adaptar o JavaScript para usar Supabase Auth, Banco de Dados e Storage, com políticas Row Level Security (RLS) para que outros usuários não acessem suas notas e arquivos.
+- Não publique senhas, chaves secretas ou service_role no GitHub nem no JavaScript. Use apenas uma chave publishable no cliente, com RLS rigorosamente configurado.
+- Até concluir essa integração, os dados salvos no aplicativo web ficam no armazenamento local do navegador do dispositivo. Faça backups; não use notas reais de estudantes antes de configurar e testar acesso seguro.
+
+OBSERVAÇÕES
+- É uma PWA (aplicativo web), NÃO um aplicativo nativo iOS.
+- Os lembretes na versão web não são alarmes do iPhone em segundo plano.
+- O upload de anexos e o armazenamento seguro em nuvem também dependem de integração adicional.
+- O HTML atual foi criado como demonstração e deve ser testado antes do uso com dados reais.

@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: agenda-docente
+    runtime: static
+    buildCommand: echo "Agenda Docente pronto para publicar"
+    staticPublishPath: .
