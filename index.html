@@ -138,7 +138,7 @@ hr.sep { border:none; border-top:1px solid var(--line); margin:14px 0; }
     <label>Anexar arquivo</label>
     <input type="file" id="taskFile" multiple />
     <div class="small-note" id="fileNames">Nenhum arquivo selecionado.</div>
-    <div class="small-note">Nesta versão web, os anexos são registrados apenas pelo nome e os lembretes não disparam alarmes com o aplicativo fechado. Use o app Lembretes do iPhone para alertas sonoros.</div>
+    <div class="small-note">Com a nuvem conectada, os novos anexos são enviados ao armazenamento privado do Supabase (máximo 10 MB por arquivo). Sem a nuvem, apenas o nome é registrado. Lembretes com alarme não disparam em segundo plano nesta versão web.</div>
     <hr class="sep" />
     <div style="display:flex;justify-content:space-between;align-items:center;">
       <strong style="color:var(--navy);">Checklist</strong>
@@ -290,7 +290,7 @@ function openNotesEditor(index) {
         <button class="outline-btn" onclick="notesBold()"><strong>N</strong> Negrito</button>
       </div>
       <div id="notesEditor" class="notes-editor" contenteditable="true" role="textbox" aria-label="Bloco de notas que aceita tabelas" spellcheck="true"></div>
-      <div class="notes-status" id="noteSaveStatus">Digite, copie ou cole tabelas. O conteúdo é salvo no navegador.</div>
+      <div class="notes-status" id="noteSaveStatus">Digite, copie ou cole tabelas. O conteúdo é salvo no aparelho e, quando conectado, sincronizado com a nuvem.</div>
       <div class="actions"><button class="primary-btn" onclick="saveNoteAndBack()">Salvar e voltar</button></div>
     </div>`;
   const editor=document.getElementById('notesEditor'); editor.innerHTML=saved;
@@ -326,7 +326,7 @@ function saveNote(showStatus=true) {
   notesData[noteKey()]=sanitizeNotesHTML(editor.innerHTML);
   persistNotes();
   const status=document.getElementById('noteSaveStatus');
-  if(status && showStatus) status.textContent='Conteúdo salvo neste navegador.';
+  if(status && showStatus) status.textContent='Conteúdo salvo neste aparelho. A nuvem sincroniza quando conectada.';
 }
 function saveNoteAndBack() { saveNote(); openNotesSubjects(notesState.trimester); }
 
@@ -392,10 +392,21 @@ function renderDays() {
     }).join('');
 }
 function openDay(day) { state.weekday=day; showScreen('screen-daydetail'); renderDayDetail(); }
+function attachmentLabel(file) {
+  return typeof file === 'string' ? file : (file?.name || 'Arquivo');
+}
 function taskPreview(task, editFunction) {
+  const files = Array.isArray(task.attachments) ? task.attachments : [];
+  const fileActions = files.map(file => {
+    if(typeof file === 'object' && file?.path) {
+      return `<button class="outline-btn" style="font-size:12px" onclick="openAgendaFile('${encodeURIComponent(file.path)}')">📎 Abrir ${escapeHtml(attachmentLabel(file))}</button>`;
+    }
+    return `<small>📎 ${escapeHtml(attachmentLabel(file))} (somente nome, registro anterior)</small>`;
+  }).join(' ');
   return `<div class="task-chip"><div class="row"><div style="flex:1"><strong>${escapeHtml(task.title)}</strong>
-    <small>${task.reminder?'⏰ '+escapeHtml(task.reminder)+' • ':''}${task.attachments?.length?'📎 '+escapeHtml(task.attachments.join(', '))+' • ':''}${task.notes?escapeHtml(task.notes):''}</small></div>
-    <button class="outline-btn" onclick="${editFunction}">Editar</button></div></div>`;
+    <small>${task.reminder?'⏰ '+escapeHtml(task.reminder)+' • ':''}${files.length?'📎 '+files.length+' arquivo(s) • ':''}${task.notes?escapeHtml(task.notes):''}</small></div>
+    <button class="outline-btn" onclick="${editFunction}">Editar</button></div>
+    ${fileActions ? `<div class="actions">${fileActions}</div>` : ''}</div>`;
 }
 function renderDayDetail() {
   const list = lists.find(l => l.id === state.list);
@@ -500,7 +511,7 @@ function openModal(blockId,label,kind,editIndex=null) {
   document.getElementById('repeatWeekly').checked=Boolean(task?.repeat);
   document.getElementById('taskReminder').value=task?.reminder||'';
   document.getElementById('taskFile').value='';
-  document.getElementById('fileNames').textContent=task?.attachments?.join(', ') || 'Nenhum arquivo selecionado.';
+  document.getElementById('fileNames').textContent=task?.attachments?.map(attachmentLabel).join(', ') || 'Nenhum arquivo selecionado.';
   document.getElementById('checklistFields').innerHTML='';
   (task?.checklist||[]).forEach(addChecklistField);
   document.getElementById('eventDateRow').classList.toggle('hidden',kind!=='agenda');
@@ -517,29 +528,54 @@ document.getElementById('taskFile').addEventListener('change', e => {
   const names=[...e.target.files].map(f=>f.name);
   document.getElementById('fileNames').textContent=names.length?names.join(', '):'Nenhum arquivo selecionado.';
 });
-function saveTask() {
+async function saveTask() {
   const title=document.getElementById('taskTitle').value.trim();
   if(!title) { alert('Digite um título para a atividade.'); return; }
   const notes=document.getElementById('taskNotes').value.trim();
   const reminder=document.getElementById('taskReminder').value;
   const repeat=document.getElementById('repeatWeekly').checked;
-  const newFiles=[...document.getElementById('taskFile').files].map(f=>f.name);
+  const files=[...document.getElementById('taskFile').files];
   const checklist=[...document.querySelectorAll('.check-input')].map(i=>i.value.trim()).filter(Boolean);
   const edit=state.editing;
-  const currentTasks=getTasks(state.list,edit?.dateOrDay||state.weekday,state.block);
+  const originalDate=edit?.dateOrDay || state.weekday;
+  const currentTasks=getTasks(state.list,originalDate,state.block);
   const prev=edit?currentTasks[edit.index]:null;
-  const task={title,notes,reminder,repeat,attachments:[...(prev?.attachments||[]),...newFiles],checklist};
-  if(edit) { currentTasks.splice(edit.index,1); setTasks(state.list,edit.dateOrDay,state.block,currentTasks); }
-  if(state.list==='agenda') {
-    const newDate=document.getElementById('taskDate').value;
-    if(!newDate) {alert('Selecione uma data.');return;}
-    const targetTasks=getTasks('agenda',newDate,'date'); targetTasks.push(task); setTasks('agenda',newDate,'date',targetTasks);
-    const target=fromISO(newDate); calendarState.year=target.getFullYear(); calendarState.month=target.getMonth(); calendarState.selected=newDate;
-  } else {
-    const targetTasks=getTasks(state.list,state.weekday,state.block); targetTasks.push(task); setTasks(state.list,state.weekday,state.block,targetTasks);
+  const newDate=state.list==='agenda'?document.getElementById('taskDate').value:null;
+  if(state.list==='agenda'&&!newDate) { alert('Selecione uma data.'); return; }
+  const button=document.querySelector('#taskModal .primary-btn');
+  if(button) { button.disabled=true; button.textContent='Salvando...'; }
+  try {
+    let attachments=[...(prev?.attachments||[])];
+    if(files.length) {
+      if(window.agendaCloudIsConnected?.()) {
+        attachments.push(...await window.agendaCloudUploadFiles(files));
+      } else {
+        const onlyNames=confirm('A nuvem não está conectada. Se continuar, serão registrados apenas os NAMES dos arquivos (sem enviar o conteúdo). Deseja continuar?'.replace('NAMES','nomes'));
+        if(!onlyNames) return;
+        attachments.push(...files.map(f=>f.name));
+      }
+    }
+    const task={title,notes,reminder,repeat,attachments,checklist};
+    if(edit) {
+      currentTasks.splice(edit.index,1);
+      setTasks(state.list,originalDate,state.block,currentTasks);
+    }
+    if(state.list==='agenda') {
+      const targetTasks=getTasks('agenda',newDate,'date');
+      targetTasks.push(task);setTasks('agenda',newDate,'date',targetTasks);
+      const target=fromISO(newDate);
+      calendarState.year=target.getFullYear();calendarState.month=target.getMonth();calendarState.selected=newDate;
+    } else {
+      const targetTasks=getTasks(state.list,state.weekday,state.block);
+      targetTasks.push(task);setTasks(state.list,state.weekday,state.block,targetTasks);
+    }
+    closeModal();
+    if(state.list==='agenda') renderCalendar(); else renderDayDetail();
+  } catch(err) {
+    alert('Não foi possível salvar o arquivo/tarefa: '+(err.message||err));
+  } finally {
+    if(button){button.disabled=false;button.textContent='Salvar tarefa';}
   }
-  closeModal();
-  if(state.list==='agenda') renderCalendar(); else renderDayDetail();
 }
 
 // Recursos adicionais da versão web instalável no iPhone.
@@ -578,7 +614,7 @@ function renderExtrasOnHome() {
   home.insertAdjacentHTML('beforeend', `
     <div class="card" style="margin-top:14px">
       <div class="title">Backup dos seus registros</div>
-      <div class="subtitle" style="line-height:1.5;margin-top:8px">As tarefas e notas ficam guardadas neste iPhone. Faça backups regularmente para evitar perda de informações.</div>
+      <div class="subtitle" style="line-height:1.5;margin-top:8px">Tarefas e notas continuam salvas neste aparelho. Se conectar o Supabase, elas também podem ser sincronizadas na nuvem. Faça backups regularmente.</div>
       <div class="actions">
         <button class="primary-btn" onclick="exportAgendaBackup()">Salvar backup</button>
         <button class="outline-btn" onclick="document.getElementById('restoreBackupFile').click()">Restaurar backup</button>
@@ -593,6 +629,29 @@ renderHome();
 if('serviceWorker' in navigator && location.protocol==='https:') {
   window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{}));
 }
+
+// Integração Supabase: acesso controlado à cópia local existente.
+function agendaReadCloudPayload() {
+  return {tasks:JSON.parse(JSON.stringify(taskStore)),notes:JSON.parse(JSON.stringify(notesData))};
+}
+function agendaApplyCloudPayload(payload) {
+  if(!payload || !payload.tasks || !payload.notes ||
+     Array.isArray(payload.tasks) || Array.isArray(payload.notes) ||
+     typeof payload.tasks !== 'object' || typeof payload.notes !== 'object') {
+    throw new Error('Formato inválido: os dados locais não foram alterados.');
+  }
+  // Primeiro grava o backup recuperado no armazenamento local; em seguida atualiza as telas.
+  localStorage.setItem(storageKey,JSON.stringify(payload.tasks));
+  localStorage.setItem(notesStorageKey,JSON.stringify(payload.notes));
+  taskStore=payload.tasks;
+  notesData=payload.notes;
+  state.list=null;
+  renderHome();
+}
+
 </script>
+<script src="./supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./cloud.js"></script>
 </body>
 </html>
